@@ -40,6 +40,11 @@ interface IBarStyleProps {
   color: string;
 }
 
+interface ICriticalPathBarStyleProps {
+  left: number;
+  width: number;
+}
+
 const Container = euiStyled.div<IContainerStyleProps>`
   position: relative;
   display: block;
@@ -68,6 +73,28 @@ const ItemBar = euiStyled.div<IBarStyleProps>`
   background-color: ${(props) => props.color};
 `;
 
+const CriticalPathItemBar = euiStyled.div`
+  box-sizing: border-box;
+  position: relative;
+  height: ${({ theme }) => theme.eui.euiSizeS};
+  top : ${({ theme }) =>  '-' + theme.eui.euiSizeS};
+  min-width: 2px;
+  background-color: transparent;
+  margin-bottom: ${({ theme }) =>  '-' +  theme.eui.euiSizeS};
+  display: flex;
+  flex-direction: row;
+`;
+
+const CriticalPathItemSegment = euiStyled.div<ICriticalPathBarStyleProps>`
+  box-sizing: border-box;
+  position: absolute;
+  height: ${({ theme }) => theme.eui.euiSizeS};
+  left: ${(props) => props.left}%;
+  width: ${(props) => props.width}%;
+  min-width: 2px;
+  background-color: red;
+`;
+
 const ItemText = euiStyled.span`
   position: absolute;
   right: 0;
@@ -85,12 +112,14 @@ const ItemText = euiStyled.span`
 
 interface IWaterfallItemProps {
   timelineMargins: Margins;
+  isOpen: boolean;
   totalDuration?: number;
   item: IWaterfallSpanOrTransaction;
   hasToggle: boolean;
   color: string;
   isSelected: boolean;
   errorCount: number;
+  showCriticalPath: boolean;
   onClick: () => unknown;
 }
 
@@ -185,12 +214,14 @@ function NameLabel({ item }: { item: IWaterfallSpanOrTransaction }) {
 
 export function WaterfallItem({
   timelineMargins,
+  isOpen,
   totalDuration,
   item,
   hasToggle,
   color,
   isSelected,
   errorCount,
+  showCriticalPath,
   onClick,
 }: IWaterfallItemProps) {
   if (!totalDuration) {
@@ -201,7 +232,8 @@ export function WaterfallItem({
   const left = ((item.offset + item.skew) / totalDuration) * 100;
 
   const isCompositeSpan = item.docType === 'span' && item.doc.span.composite;
-  const itemBarStyle = getItemBarStyle(item, color, width, left);
+  const barColor = showCriticalPath ? makeColorTransparent(color) : color;
+  const itemBarStyle = getItemBarStyle(item, barColor, width, left);
   const isServerlessColdstart =
     item.docType === 'transaction' && item.doc.faas?.coldstart;
 
@@ -218,9 +250,14 @@ export function WaterfallItem({
     >
       <ItemBar // using inline styles instead of props to avoid generating a css class for each item
         style={itemBarStyle}
-        color={isCompositeSpan ? 'transparent' : color}
+        color={isCompositeSpan ? 'transparent' : barColor}
         type={item.docType}
       />
+      {showCriticalPath && item.criticalPath && item.criticalPath.length > 0 && <CriticalPathItemBar>
+        {item.criticalPath.filter(segment => !isOpen || !segment.isChildPath).map(segment => <CriticalPathItemSegment 
+          left={(segment.offset / totalDuration) * 100} 
+          width={(segment.duration / totalDuration) * 100} />)}
+      </CriticalPathItemBar>}
       <ItemText // using inline styles instead of props to avoid generating a css class for each item
         style={{ minWidth: `${Math.max(100 - left, 0)}%` }}
       >
@@ -317,4 +354,14 @@ function getItemBarStyle(
   }
 
   return itemBarStyle;
+}
+
+function makeColorTransparent(color: string){
+  if(color.startsWith('rgb(')){
+    return color.substring(0, color.length -1) + ',0.4)';
+  } else if(color.startsWith('#') && color.length === 7) {
+    return color + '80';
+  } else {
+    return color;
+  }
 }

@@ -32,6 +32,7 @@ interface AccordionWaterfallProps {
   waterfall: IWaterfall;
   timelineMargins: Margins;
   onClickWaterfallItem: (item: IWaterfallSpanOrTransaction) => void;
+  showCriticalPath: boolean;
 }
 
 const ACCORDION_HEIGHT = '48px';
@@ -85,6 +86,7 @@ export function AccordionWaterfall(props: AccordionWaterfallProps) {
     setMaxLevel,
     timelineMargins,
     onClickWaterfallItem,
+    showCriticalPath
   } = props;
 
   const [isOpen, setIsOpen] = useState(props.isOpen);
@@ -94,7 +96,10 @@ export function AccordionWaterfall(props: AccordionWaterfallProps) {
     setMaxLevel(nextLevel);
   }, [nextLevel, setMaxLevel]);
 
-  const children = waterfall.childrenByParentId[item.id] || [];
+  var children = waterfall.childrenByParentId[item.id] || [];
+  if(showCriticalPath && children.length > 0){
+    children = children.filter(child => !!child.criticalPath);
+  }
   const errorCount = waterfall.getErrorCount(item.id);
 
   // To indent the items creating the parent/child tree
@@ -130,6 +135,7 @@ export function AccordionWaterfall(props: AccordionWaterfallProps) {
           <EuiFlexItem>
             <WaterfallItem
               key={item.id}
+              isOpen={isOpen}
               timelineMargins={timelineMargins}
               color={item.color}
               item={item}
@@ -137,6 +143,7 @@ export function AccordionWaterfall(props: AccordionWaterfallProps) {
               totalDuration={duration}
               isSelected={item.id === waterfallItemId}
               errorCount={errorCount}
+              showCriticalPath={showCriticalPath}
               onClick={() => {
                 onClickWaterfallItem(item);
               }}

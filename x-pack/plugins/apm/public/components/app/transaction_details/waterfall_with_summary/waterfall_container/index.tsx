@@ -5,8 +5,12 @@
  * 2.0.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { keyBy } from 'lodash';
+import { EuiFlexGroup } from '@elastic/eui';
+import { EuiFlexItem } from '@elastic/eui';
+import { EuiSwitch } from '@elastic/eui';
+
 import type { ApmUrlParams } from '../../../../../context/url_params_context/types';
 import {
   IWaterfall,
@@ -15,6 +19,7 @@ import {
 import { Waterfall } from './waterfall';
 import { WaterfallLegends } from './waterfall_legends';
 import { useApmServiceContext } from '../../../../../context/apm_service/use_apm_service_context';
+import { calculateCriticalPath } from './critical_path';
 
 interface Props {
   urlParams: ApmUrlParams;
@@ -23,9 +28,13 @@ interface Props {
 
 export function WaterfallContainer({ urlParams, waterfall }: Props) {
   const { serviceName } = useApmServiceContext();
-
+  const [ showInTabCriticalPath, setShowInTabCriticalPath] = useState(false);
   if (!waterfall) {
     return null;
+  }
+
+  if (showInTabCriticalPath  && waterfall.entryWaterfallTransaction && !waterfall.entryWaterfallTransaction.criticalPath){
+    calculateCriticalPath(waterfall)
   }
 
   const { legends, items } = waterfall;
@@ -74,10 +83,23 @@ export function WaterfallContainer({ urlParams, waterfall }: Props) {
 
   return (
     <div>
-      <WaterfallLegends legends={legendsWithFallbackLabel} type={colorBy} />
+      <EuiFlexGroup direction="row" gutterSize="s" justifyContent='spaceBetween'>
+            <EuiFlexItem grow={false} key={"legend"}>
+              <WaterfallLegends legends={legendsWithFallbackLabel} type={colorBy} />
+            </EuiFlexItem>
+            <EuiFlexItem grow={false} key={"critical path button"}>
+              <EuiSwitch
+                label="Show critical path"
+                checked={showInTabCriticalPath}
+                onChange={() => setShowInTabCriticalPath(!showInTabCriticalPath)}
+              />
+            </EuiFlexItem>
+      </EuiFlexGroup>
+      
       <Waterfall
         waterfallItemId={urlParams.waterfallItemId}
         waterfall={waterfall}
+        showCriticalPath={showInTabCriticalPath}
       />
     </div>
   );

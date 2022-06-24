@@ -96,7 +96,7 @@ function TimelineTabContent({
   urlParams: ApmUrlParams;
   waterfall: IWaterfall;
 }) {
-  return <WaterfallContainer urlParams={urlParams} waterfall={waterfall} />;
+  return <WaterfallContainer urlParams={urlParams} waterfall={waterfall}/>;
 }
 
 function MetadataTabContent({ transaction }: { transaction: Transaction }) {

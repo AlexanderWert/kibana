@@ -26,6 +26,12 @@ export interface SpanLinksCount {
   linkedParents: number;
 }
 
+export interface ICriticalPathSegment {
+  offset: number;
+  duration: number;
+  isChildPath: boolean;
+}
+
 export enum WaterfallLegendType {
   ServiceName = 'serviceName',
   SpanType = 'spanType',
@@ -55,6 +61,7 @@ interface IWaterfallSpanItemBase<TDocument, TDoctype>
   duration: number;
   legendValues: Record<WaterfallLegendType, string>;
   spanLinksCount: SpanLinksCount;
+  criticalPath?: ICriticalPathSegment[];
 }
 
 interface IWaterfallItemBase<TDocument, TDoctype> {

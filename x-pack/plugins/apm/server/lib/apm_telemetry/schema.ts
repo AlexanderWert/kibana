@@ -20,11 +20,10 @@ const long: { type: 'long' } = { type: 'long' };
 
 const keyword: { type: 'keyword' } = { type: 'keyword' };
 
-const aggregatedTransactionCountSchema: MakeSchemaFrom<AggregatedTransactionsCounts> =
-  {
-    expected_metric_document_count: long,
-    transaction_count: long,
-  };
+const aggregatedTransactionCountSchema: MakeSchemaFrom<AggregatedTransactionsCounts> = {
+  expected_metric_document_count: long,
+  transaction_count: long,
+};
 
 const timeframeMap1dSchema: MakeSchemaFrom<TimeframeMap1d> = {
   '1d': long,
@@ -94,6 +93,7 @@ const apmPerAgentSchema: Pick<
     'opentelemetry/erlang': long,
     'opentelemetry/go': long,
     'opentelemetry/java': long,
+    'opentelemetry/Nginx': long,
     'opentelemetry/nodejs': long,
     'opentelemetry/php': long,
     'opentelemetry/python': long,

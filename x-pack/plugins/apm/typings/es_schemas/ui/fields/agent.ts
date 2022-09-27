@@ -30,7 +30,8 @@ export type OpenTelemetryAgentName =
   | 'opentelemetry/python'
   | 'opentelemetry/ruby'
   | 'opentelemetry/swift'
-  | 'opentelemetry/webjs';
+  | 'opentelemetry/webjs'
+  | 'opentelemetry/Nginx';
 
 /*
  * Support additional agent types by appending definitions in mappings.json

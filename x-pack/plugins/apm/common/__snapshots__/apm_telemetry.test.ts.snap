@@ -64,6 +64,9 @@ exports[`APM telemetry helpers getApmTelemetry generates a JSON object with the 
                         "opentelemetry/java": {
                           "type": "long"
                         },
+                        "opentelemetry/Nginx": {
+                          "type": "long"
+                        },
                         "opentelemetry/nodejs": {
                           "type": "long"
                         },

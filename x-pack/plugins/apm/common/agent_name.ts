@@ -22,6 +22,7 @@ export const OPEN_TELEMETRY_AGENT_NAMES: AgentName[] = [
   'opentelemetry/erlang',
   'opentelemetry/go',
   'opentelemetry/java',
+  'opentelemetry/Nginx',
   'opentelemetry/nodejs',
   'opentelemetry/php',
   'opentelemetry/python',

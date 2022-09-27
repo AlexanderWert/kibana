@@ -33,14 +33,17 @@ import darkRumJsIcon from './icons/rumjs_dark.svg';
 import rustIcon from './icons/rust.svg';
 import darkRustIcon from './icons/rust_dark.svg';
 import androidIcon from './icons/android.svg';
+import nginxIcon from './icons/nginx.svg';
 
 const agentIcons: { [key: string]: string } = {
+  android: androidIcon,
   dotnet: dotNetIcon,
   erlang: erlangIcon,
   go: goIcon,
   ios: iosIcon,
   java: javaIcon,
   lambda: lambdaIcon,
+  nginx: nginxIcon,
   nodejs: nodeJsIcon,
   ocaml: ocamlIcon,
   opentelemetry: openTelemetryIcon,
@@ -49,7 +52,6 @@ const agentIcons: { [key: string]: string } = {
   ruby: rubyIcon,
   rum: rumJsIcon,
   rust: rustIcon,
-  android: androidIcon,
 };
 
 const darkAgentIcons: { [key: string]: string } = {

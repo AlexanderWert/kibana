@@ -415,6 +415,53 @@ function getErrorCountByParentId(
   }, {});
 }
 
+const getSyntheticSpans = (
+  waterfallItems: IWaterfallSpanOrTransaction[]
+): IWaterfallSpan[] =>
+  waterfallItems
+    .filter(
+      (item) =>
+        item.docType === 'transaction' &&
+        item.doc.service.name === 'testS3Function'
+    )
+    .map((item) => item as IWaterfallTransaction)
+    .map((item) => ({
+      doc: {
+        timestamp: {
+          us: item.doc.timestamp.us - item.doc.transaction.duration.us * 0.1,
+        },
+        trace: item.doc.trace,
+        service: item.doc.service,
+        agent: { name: 'otlp' },
+        parent: { id: item.parentId },
+        processor: { event: 'span' },
+        span: {
+          id: `apigw${item.id}`,
+          type: 'aws-api-gateway',
+          name: 'API Gateway',
+          sync: true,
+          duration: { us: item.doc.transaction.duration.us * 1.1 },
+        },
+        child: { id: [item.id] },
+      },
+      docType: 'span',
+      id: `apigw${item.id}`,
+      parent: item.parent,
+      parentId: item.parentId,
+      color: 'grey',
+      offset: item.offset - item.duration * 0.1,
+      skew: item.skew,
+      duration: item.duration * 1.1,
+      legendValues: {
+        [WaterfallLegendType.ServiceName]: 'API Gateway',
+        [WaterfallLegendType.SpanType]: 'aws-api-gateway',
+      },
+      spanLinksCount: {
+        linkedParents: 0,
+        linkedChildren: 0,
+      },
+    }));
+
 export function getWaterfall(apiResponse: TraceAPIResponse): IWaterfall {
   const { traceItems, entryTransaction } = apiResponse;
   if (isEmpty(traceItems.traceDocs) || !entryTransaction) {
@@ -434,10 +481,15 @@ export function getWaterfall(apiResponse: TraceAPIResponse): IWaterfall {
 
   const errorCountByParentId = getErrorCountByParentId(traceItems.errorDocs);
 
-  const waterfallItems: IWaterfallSpanOrTransaction[] = getWaterfallItems(
+  const waterfallItemsRaw: IWaterfallSpanOrTransaction[] = getWaterfallItems(
     traceItems.traceDocs,
     traceItems.spanLinksCountById
   );
+
+  const waterfallItems: IWaterfallSpanOrTransaction[] = [
+    ...waterfallItemsRaw,
+    ...getSyntheticSpans(waterfallItemsRaw),
+  ];
 
   const childrenByParentId = getChildrenGroupedByParentId(
     reparentSpans(waterfallItems)

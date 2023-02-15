@@ -31,9 +31,17 @@ export interface WaterfallTransaction {
   };
   faas?: {
     coldstart?: boolean;
+    trigger?: {
+      type?: string;
+      request_id?: string;
+    };
+    'trigger.request_id'?: string;
   };
   span?: {
     links?: SpanLink[];
+  };
+  labels?: {
+    [key: string]: string | number | boolean;
   };
 }
 
@@ -67,6 +75,9 @@ export interface WaterfallSpan {
     id: string;
   };
   child?: { id: string[] };
+  labels?: {
+    [key: string]: string | number | boolean;
+  };
 }
 
 export interface WaterfallError {

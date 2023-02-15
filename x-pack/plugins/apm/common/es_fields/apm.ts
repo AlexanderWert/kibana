@@ -134,6 +134,7 @@ export const METRICSET_NAME = 'metricset.name';
 export const METRICSET_INTERVAL = 'metricset.interval';
 
 export const LABEL_NAME = 'labels.name';
+export const LABEL_APIGATEWAY_REQUEST_ID = 'labels.apigateway_request_id';
 
 export const HOST = 'host';
 export const HOST_HOSTNAME = 'host.hostname'; // Do not use. Please use `HOST_NAME` instead.
@@ -154,6 +155,7 @@ export const FAAS_ID = 'faas.id';
 export const FAAS_NAME = 'faas.name';
 export const FAAS_COLDSTART = 'faas.coldstart';
 export const FAAS_TRIGGER_TYPE = 'faas.trigger.type';
+export const FAAS_TRIGGER_REQUEST_ID = 'faas.trigger.request_id';
 export const FAAS_DURATION = 'faas.duration';
 export const FAAS_COLDSTART_DURATION = 'faas.coldstart_duration';
 export const FAAS_BILLED_DURATION = 'faas.billed_duration';

@@ -12,7 +12,10 @@ import React, { useMemo } from 'react';
 import { Transaction } from '../../../../../typings/es_schemas/ui/transaction';
 import { TransactionMetadata } from '../../../shared/metadata_table/transaction_metadata';
 import { WaterfallContainer } from './waterfall_container';
-import { IWaterfall } from './waterfall_container/waterfall/waterfall_helpers/waterfall_helpers';
+import {
+  IWaterfall,
+  IWaterfallTransaction,
+} from './waterfall_container/waterfall/waterfall_helpers/waterfall_helpers';
 
 export enum TransactionTab {
   timeline = 'timeline',
@@ -81,6 +84,7 @@ export function TransactionTabs({
                 timestamp={transaction.timestamp.us}
                 duration={transaction.transaction.duration.us}
                 traceId={transaction.trace.id}
+                requestIds={getRequestIds(waterfall)}
               />
             )}
           </>
@@ -157,24 +161,48 @@ function MetadataTabContent({ transaction }: { transaction: Transaction }) {
   return <TransactionMetadata transactionId={transaction.transaction.id} />;
 }
 
+const getRequestIds = (waterfall: IWaterfall) =>
+  waterfall.items
+    .filter((item) => {
+      return (
+        item.doc.labels?.apigateway_request_id !== undefined ||
+        (item.docType === 'transaction' &&
+          (item as IWaterfallTransaction).doc.faas?.trigger?.request_id !==
+            undefined)
+      );
+    })
+    .map((item) => {
+      return (
+        item.doc.labels?.apigateway_request_id
+          ? (item.doc.labels?.apigateway_request_id as string)
+          : (item as IWaterfallTransaction).doc.faas?.trigger?.request_id
+      ) as string;
+    });
+
 function LogsTabContent({
   timestamp,
   duration,
   traceId,
+  requestIds,
 }: {
   timestamp: number;
   duration: number;
   traceId: string;
+  requestIds: string[];
 }) {
   const startTimestamp = Math.floor(timestamp / 1000);
   const endTimestamp = Math.ceil(startTimestamp + duration / 1000);
   const framePaddingMs = 1000 * 60 * 60 * 24; // 24 hours
+  const requestIdsQuery =
+    requestIds && requestIds.length > 0
+      ? ` OR aws.apigw.request.id: ("${requestIds.join('","')}")`
+      : '';
   return (
     <LogStream
       logView={{ type: 'log-view-reference', logViewId: 'default' }}
       startTimestamp={startTimestamp - framePaddingMs}
       endTimestamp={endTimestamp + framePaddingMs}
-      query={`trace.id:"${traceId}" OR (not trace.id:* AND "${traceId}")`}
+      query={`trace.id:"${traceId}" OR (not trace.id:* AND "${traceId}")${requestIdsQuery}`}
       height={640}
       columns={[
         { type: 'timestamp' },

@@ -19,5 +19,8 @@ export interface APMBaseDoc {
   labels?: {
     [key: string]: string | number | boolean;
   };
+  numeric_labels?: {
+    [key: string]: number;
+  };
   observer?: Observer;
 }

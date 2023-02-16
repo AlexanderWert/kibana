@@ -428,7 +428,9 @@ const getSyntheticSpans = (
     .map((item) => ({
       doc: {
         timestamp: {
-          us: item.doc.timestamp.us - item.doc.transaction.duration.us * 0.1,
+          us: item.doc.numeric_labels?.aws_apigw_timestamp
+            ? item.doc.numeric_labels.aws_apigw_timestamp * 1000
+            : 0,
         },
         trace: item.doc.trace,
         service: item.doc.service,
@@ -440,18 +442,35 @@ const getSyntheticSpans = (
           type: 'aws-api-gateway',
           name: 'API Gateway',
           sync: true,
-          duration: { us: item.doc.transaction.duration.us * 1.1 },
+          duration: {
+            us:
+              item.doc.transaction.duration.us +
+              item.doc.timestamp.us -
+              (item.doc.numeric_labels?.aws_apigw_timestamp
+                ? item.doc.numeric_labels.aws_apigw_timestamp * 1000
+                : 0),
+          },
         },
         child: { id: [item.id] },
+        labels: {
+          aws_apigw_request_id:
+            item.doc.faas?.trigger?.request_id ??
+            item.doc.faas?.['trigger.request_id'],
+        },
       },
       docType: 'span',
       id: `apigw${item.id}`,
       parent: item.parent,
       parentId: item.parentId,
       color: 'grey',
-      offset: item.offset - item.duration * 0.1,
-      skew: item.skew,
-      duration: item.duration * 1.1,
+      offset: 0.0,
+      skew: 0.0,
+      duration:
+        item.doc.transaction.duration.us +
+        item.doc.timestamp.us -
+        (item.doc.numeric_labels?.aws_apigw_timestamp
+          ? item.doc.numeric_labels.aws_apigw_timestamp * 1000
+          : 0),
       legendValues: {
         [WaterfallLegendType.ServiceName]: 'API Gateway',
         [WaterfallLegendType.SpanType]: 'aws-api-gateway',

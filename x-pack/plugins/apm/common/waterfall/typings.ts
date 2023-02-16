@@ -43,6 +43,9 @@ export interface WaterfallTransaction {
   labels?: {
     [key: string]: string | number | boolean;
   };
+  numeric_labels?: {
+    [key: string]: number;
+  };
 }
 
 export interface WaterfallSpan {
@@ -76,7 +79,7 @@ export interface WaterfallSpan {
   };
   child?: { id: string[] };
   labels?: {
-    [key: string]: string | number | boolean;
+    aws_apigw_request_id?: string;
   };
 }
 

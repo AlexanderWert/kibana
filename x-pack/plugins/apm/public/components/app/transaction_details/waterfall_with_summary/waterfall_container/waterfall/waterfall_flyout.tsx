@@ -10,6 +10,7 @@ import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { useAnyOfApmParams } from '../../../../../../hooks/use_apm_params';
 import { SpanFlyout } from './span_flyout';
+import { ApiGwFlyout } from './apigw_flyout';
 import { TransactionFlyout } from './transaction_flyout';
 import { IWaterfall } from './waterfall_helpers/waterfall_helpers';
 
@@ -54,7 +55,14 @@ export function WaterfallFlyout({
           ? currentItem.parentId
           : undefined;
 
-      return (
+      return currentItem.doc.span.type === 'aws-api-gateway' ? (
+        <ApiGwFlyout
+          span={currentItem}
+          totalDuration={waterfall.duration}
+          timestamp={currentItem.doc.timestamp.us}
+          onClose={() => toggleFlyout({ history })}
+        />
+      ) : (
         <SpanFlyout
           totalDuration={waterfall.duration}
           spanId={currentItem.id}

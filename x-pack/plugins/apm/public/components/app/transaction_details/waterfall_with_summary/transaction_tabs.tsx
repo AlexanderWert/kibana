@@ -165,7 +165,7 @@ const getRequestIds = (waterfall: IWaterfall) =>
   waterfall.items
     .filter((item) => {
       return (
-        item.doc.labels?.apigateway_request_id !== undefined ||
+        item.doc.labels?.aws_apigw_request_id !== undefined ||
         (item.docType === 'transaction' &&
           (item as IWaterfallTransaction).doc.faas?.trigger?.request_id !==
             undefined)
@@ -173,8 +173,8 @@ const getRequestIds = (waterfall: IWaterfall) =>
     })
     .map((item) => {
       return (
-        item.doc.labels?.apigateway_request_id
-          ? (item.doc.labels?.apigateway_request_id as string)
+        item.doc.labels?.aws_apigw_request_id
+          ? (item.doc.labels?.aws_apigw_request_id as string)
           : (item as IWaterfallTransaction).doc.faas?.trigger?.request_id
       ) as string;
     });
@@ -195,7 +195,7 @@ function LogsTabContent({
   const framePaddingMs = 1000 * 60 * 60 * 24; // 24 hours
   const requestIdsQuery =
     requestIds && requestIds.length > 0
-      ? ` OR aws.apigw.request.id: ("${requestIds.join('","')}")`
+      ? ` OR aws.apigw.request.id: ("${requestIds.join('" OR "')}")`
       : '';
   return (
     <LogStream

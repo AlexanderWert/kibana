@@ -134,7 +134,9 @@ export const METRICSET_NAME = 'metricset.name';
 export const METRICSET_INTERVAL = 'metricset.interval';
 
 export const LABEL_NAME = 'labels.name';
-export const LABEL_APIGATEWAY_REQUEST_ID = 'labels.apigateway_request_id';
+export const LABEL_APIGATEWAY_REQUEST_ID = 'labels.aws_apigw_request_id';
+export const NUMERIC_LABEL_AWS_APIGW_TIMESTAMP =
+  'numeric_labels.aws_apigw_timestamp';
 
 export const HOST = 'host';
 export const HOST_HOSTNAME = 'host.hostname'; // Do not use. Please use `HOST_NAME` instead.

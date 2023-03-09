@@ -97,7 +97,8 @@ function TemplateWithContext({
 
   const tabs = useTabs({ selectedTab });
 
-  const { agentName, serviceAgentStatus } = useApmServiceContext();
+  const { agentName, serviceAgentStatus, isLogsOnly, serviceNameField } =
+    useApmServiceContext();
 
   const isPendingServiceAgent = !agentName && isPending(serviceAgentStatus);
 
@@ -201,7 +202,8 @@ export function isInfraTabHidden({
 }
 
 function useTabs({ selectedTab }: { selectedTab: Tab['key'] }) {
-  const { agentName, serverlessType } = useApmServiceContext();
+  const { agentName, serverlessType, isLogsOnly, serviceNameField } =
+    useApmServiceContext();
   const { core, plugins } = useApmPluginContext();
   const { capabilities } = core.application;
   const { isAlertingAvailable, canReadAlerts } = getAlertingCapabilities(
@@ -273,6 +275,7 @@ function useTabs({ selectedTab }: { selectedTab: Tab['key'] }) {
       label: i18n.translate('xpack.apm.serviceDetails.transactionsTabLabel', {
         defaultMessage: 'Transactions',
       }),
+      hidden: isLogsOnly,
     },
     {
       key: 'dependencies',
@@ -283,7 +286,7 @@ function useTabs({ selectedTab }: { selectedTab: Tab['key'] }) {
       label: i18n.translate('xpack.apm.serviceDetails.dependenciesTabLabel', {
         defaultMessage: 'Dependencies',
       }),
-      hidden: !agentName || isRumAgentName(agentName),
+      hidden: isLogsOnly || !agentName || isRumAgentName(agentName),
     },
     {
       key: 'errors',
@@ -294,6 +297,7 @@ function useTabs({ selectedTab }: { selectedTab: Tab['key'] }) {
       label: i18n.translate('xpack.apm.serviceDetails.errorsTabLabel', {
         defaultMessage: 'Errors',
       }),
+      hidden: isLogsOnly,
     },
     {
       key: 'metrics',
@@ -307,11 +311,13 @@ function useTabs({ selectedTab }: { selectedTab: Tab['key'] }) {
       append: isServerlessAgent(serverlessType) && (
         <TechnicalPreviewBadge icon="beaker" />
       ),
-      hidden: isMetricsTabHidden({
-        agentName,
-        serverlessType,
-        isAwsLambdaEnabled,
-      }),
+      hidden:
+        isLogsOnly ||
+        isMetricsTabHidden({
+          agentName,
+          serverlessType,
+          isAwsLambdaEnabled,
+        }),
     },
     {
       key: 'infrastructure',
@@ -323,7 +329,7 @@ function useTabs({ selectedTab }: { selectedTab: Tab['key'] }) {
       label: i18n.translate('xpack.apm.home.infraTabLabel', {
         defaultMessage: 'Infrastructure',
       }),
-      hidden: isInfraTabHidden({ agentName, serverlessType }),
+      hidden: isLogsOnly || isInfraTabHidden({ agentName, serverlessType }),
     },
     {
       key: 'service-map',
@@ -334,6 +340,7 @@ function useTabs({ selectedTab }: { selectedTab: Tab['key'] }) {
       label: i18n.translate('xpack.apm.home.serviceMapTabLabel', {
         defaultMessage: 'Service Map',
       }),
+      hidden: isLogsOnly,
     },
     {
       key: 'logs',
@@ -348,9 +355,10 @@ function useTabs({ selectedTab }: { selectedTab: Tab['key'] }) {
         <TechnicalPreviewBadge icon="beaker" />
       ),
       hidden:
-        !agentName ||
-        isRumAgentName(agentName) ||
-        isAzureFunctionsAgent(serverlessType),
+        !isLogsOnly &&
+        (!agentName ||
+          isRumAgentName(agentName) ||
+          isAzureFunctionsAgent(serverlessType)),
     },
     {
       key: 'alerts',
@@ -375,7 +383,7 @@ function useTabs({ selectedTab }: { selectedTab: Tab['key'] }) {
       label: i18n.translate('xpack.apm.home.alertsTabLabel', {
         defaultMessage: 'Alerts',
       }),
-      hidden: !(isAlertingAvailable && canReadAlerts),
+      hidden: isLogsOnly || !(isAlertingAvailable && canReadAlerts),
     },
   ];
 

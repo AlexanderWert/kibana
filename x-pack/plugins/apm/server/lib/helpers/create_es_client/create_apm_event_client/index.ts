@@ -156,6 +156,38 @@ export class APMEventClient {
     });
   }
 
+  async searchLogs<TParams extends APMEventESSearchRequest>(
+    operationName: string,
+    params: TParams
+  ): Promise<TypedSearchResponse<TParams>> {
+    const searchParams = {
+      ...omit(params, 'apm', 'body'),
+      index: 'filebeat*,logs*',
+      body: {
+        ...params.body,
+        query: {
+          bool: {
+            filter: compact([params.body.query]),
+          },
+        },
+      },
+      ...(this.includeFrozen ? { ignore_throttled: false } : {}),
+      ignore_unavailable: true,
+      preference: 'any',
+      expand_wildcards: ['open' as const, 'hidden' as const],
+    };
+
+    return this.callAsyncWithDebug({
+      cb: (opts) =>
+        this.esClient.search(searchParams, opts) as unknown as Promise<{
+          body: TypedSearchResponse<TParams>;
+        }>,
+      operationName,
+      params: searchParams,
+      requestType: 'search',
+    });
+  }
+
   async search<TParams extends APMEventESSearchRequest>(
     operationName: string,
     params: TParams

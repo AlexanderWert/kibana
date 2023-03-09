@@ -44,6 +44,7 @@ import { getServicesItems } from './get_services/get_services_items';
 import { getServicesAlerts } from './get_services/get_service_alerts';
 import { getServicesDetailedStatistics } from './get_services_detailed_statistics';
 import { getServiceAgent } from './get_service_agent';
+import { getServiceNameField } from './get_service_name_field';
 import { getServiceDependencies } from './get_service_dependencies';
 import { getServiceDependenciesBreakdown } from './get_service_dependencies_breakdown';
 import { getServiceInstancesDetailedStatisticsPeriods } from './get_service_instances/detailed_statistics';
@@ -56,6 +57,7 @@ import { getServiceNodeMetadata } from './get_service_node_metadata';
 import { getServiceOverviewContainerMetadata } from './get_service_overview_container_metadata';
 import { getServiceTransactionTypes } from './get_service_transaction_types';
 import { getThroughput } from './get_throughput';
+import { getLogRate } from './get_log_rate';
 
 const servicesRoute = createApmServerRoute({
   endpoint: 'GET /internal/apm/services',
@@ -87,6 +89,12 @@ const servicesRoute = createApmServerRoute({
           serviceName: string;
           environments: string[];
           agentName: import('./../../../typings/es_schemas/ui/fields/agent').AgentName;
+        }
+      | {
+          serviceName: string;
+          serviceNameField: string;
+          isLogsOnly: boolean;
+          logRate: number;
         }
       | {
           serviceName: string;
@@ -184,7 +192,17 @@ const servicesDetailedStatisticsRoute = createApmServerRoute({
         bucketSizeInSeconds: toNumberRt,
       }),
     ]),
-    body: t.type({ serviceNames: jsonRt.pipe(t.array(t.string)) }),
+    body: t.type({
+      services: jsonRt.pipe(
+        t.array(
+          t.type({
+            serviceName: t.string,
+            isLogsOnly: t.boolean,
+          })
+        )
+      ),
+    }),
+    // body: t.type({ serviceNames: jsonRt.pipe(t.array(t.string)) }),
   }),
   options: { tags: ['access:apm'] },
   handler: async (
@@ -192,30 +210,38 @@ const servicesDetailedStatisticsRoute = createApmServerRoute({
   ): Promise<{
     currentPeriod: import('./../../../../../../node_modules/@types/lodash/ts3.1/index').Dictionary<{
       serviceName: string;
-      latency: Array<{
+      latency?: Array<{
         x: number;
         y: number | null;
       }>;
-      transactionErrorRate: Array<{
+      transactionErrorRate?: Array<{
         x: number;
         y: number;
       }>;
-      throughput: Array<{
+      throughput?: Array<{
+        x: number;
+        y: number;
+      }>;
+      logRate?: Array<{
         x: number;
         y: number;
       }>;
     }>;
     previousPeriod: import('./../../../../../../node_modules/@types/lodash/ts3.1/index').Dictionary<{
       serviceName: string;
-      latency: Array<{
+      latency?: Array<{
         x: number;
         y: number | null;
       }>;
-      transactionErrorRate: Array<{
+      transactionErrorRate?: Array<{
         x: number;
         y: number;
       }>;
-      throughput: Array<{
+      throughput?: Array<{
+        x: number;
+        y: number;
+      }>;
+      logRate?: Array<{
         x: number;
         y: number;
       }>;
@@ -239,15 +265,15 @@ const servicesDetailedStatisticsRoute = createApmServerRoute({
       bucketSizeInSeconds,
     } = params.query;
 
-    const { serviceNames } = params.body;
+    const { services } = params.body;
 
     const [apmEventClient, randomSampler] = await Promise.all([
       getApmEventClient(resources),
       getRandomSampler({ security, request, probability }),
     ]);
 
-    if (!serviceNames.length) {
-      throw Boom.badRequest(`serviceNames cannot be empty`);
+    if (!services.length) {
+      throw Boom.badRequest(`services cannot be empty`);
     }
 
     return getServicesDetailedStatistics({
@@ -258,7 +284,7 @@ const servicesDetailedStatisticsRoute = createApmServerRoute({
       rollupInterval,
       bucketSizeInSeconds,
       offset,
-      serviceNames,
+      services,
       start,
       end,
       randomSampler,
@@ -370,6 +396,34 @@ const serviceAgentRoute = createApmServerRoute({
     const { start, end } = params.query;
 
     return getServiceAgent({
+      serviceName,
+      apmEventClient,
+      start,
+      end,
+    });
+  },
+});
+
+const serviceNameFieldRoute = createApmServerRoute({
+  endpoint: 'GET /internal/apm/services/{serviceName}/service_name_field',
+  params: t.type({
+    path: t.type({
+      serviceName: t.string,
+    }),
+    query: rangeRt,
+  }),
+  options: { tags: ['access:apm'] },
+  handler: async (
+    resources
+  ): Promise<{
+    serviceNameField?: string;
+  }> => {
+    const apmEventClient = await getApmEventClient(resources);
+    const { params } = resources;
+    const { serviceName } = params.path;
+    const { start, end } = params.query;
+
+    return getServiceNameField({
       serviceName,
       apmEventClient,
       start,
@@ -645,6 +699,51 @@ const serviceThroughputRoute = createApmServerRoute({
         previousPeriodTimeseries: previousPeriod,
       }),
     };
+  },
+});
+
+const logRateRoute = createApmServerRoute({
+  endpoint: 'GET /internal/apm/services/{serviceName}/lograte',
+  params: t.type({
+    path: t.type({
+      serviceName: t.string,
+    }),
+    query: t.intersection([
+      t.type({ serviceNameField: t.string }),
+      t.intersection([environmentRt, kueryRt, rangeRt, offsetRt]),
+    ]),
+  }),
+  options: { tags: ['access:apm'] },
+  handler: async (
+    resources
+  ): Promise<{
+    timeseries: Array<{ x: number; y: number | null }>;
+    perLevel: Array<{
+      level: string | number;
+      timeseries: Array<{ x: number; y: number | null }>;
+    }>;
+  }> => {
+    const apmEventClient = await getApmEventClient(resources);
+    const { params } = resources;
+    const { serviceName } = params.path;
+    const { environment, kuery, serviceNameField, offset, start, end } =
+      params.query;
+
+    const commonProps = {
+      environment,
+      kuery,
+      serviceName,
+      apmEventClient,
+      serviceNameField,
+    };
+
+    const result = await getLogRate({
+      ...commonProps,
+      start,
+      end,
+    });
+
+    return result;
   },
 });
 
@@ -1204,4 +1303,6 @@ export const serviceRouteRepository = {
   ...serviceDependenciesBreakdownRoute,
   ...serviceAnomalyChartsRoute,
   ...serviceAlertsRoute,
+  ...serviceNameFieldRoute,
+  ...logRateRoute,
 };

@@ -5,7 +5,13 @@
  * 2.0.
  */
 
-import { EuiFlexGroup, EuiFlexItem, EuiLink, EuiText } from '@elastic/eui';
+import {
+  EuiFlexGroup,
+  EuiFlexItem,
+  EuiLink,
+  EuiText,
+  EuiIcon,
+} from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { euiStyled } from '@kbn/kibana-react-plugin/common';
 import { TypeOf } from '@kbn/typed-react-router-config';
@@ -31,7 +37,7 @@ function formatString(value?: string | null) {
 }
 
 interface ServiceLinkProps {
-  agentName?: AgentName;
+  agentName?: AgentName | 'logs-only';
   query: TypeOf<ApmRoutes, '/services/{serviceName}/overview'>['query'];
   serviceName: string;
   serviceOverflowCount?: number;
@@ -94,7 +100,11 @@ export function ServiceLink({
         >
           <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
             <EuiFlexItem grow={false}>
-              <AgentIcon agentName={agentName} />
+              {agentName === 'logs-only' ? (
+                <EuiIcon type="filebeatApp" size="l" />
+              ) : (
+                <AgentIcon agentName={agentName} />
+              )}
             </EuiFlexItem>
             <EuiFlexItem className="eui-textTruncate">
               <span className="eui-textTruncate">{serviceName}</span>

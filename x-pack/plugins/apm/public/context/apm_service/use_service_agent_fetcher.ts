@@ -42,3 +42,36 @@ export function useServiceAgentFetcher({
 
   return { ...data, status, error };
 }
+
+export function useServiceFieldNameFetcher({
+  serviceName,
+  start,
+  end,
+}: {
+  serviceName?: string;
+  start: string;
+  end: string;
+}) {
+  const {
+    data = { serviceNameField: undefined },
+    error,
+    status,
+  } = useFetcher(
+    (callApmApi) => {
+      if (serviceName) {
+        return callApmApi(
+          'GET /internal/apm/services/{serviceName}/service_name_field',
+          {
+            params: {
+              path: { serviceName },
+              query: { start, end },
+            },
+          }
+        );
+      }
+    },
+    [serviceName, start, end]
+  );
+
+  return { ...data, status, error };
+}

@@ -7,27 +7,18 @@
 
 import { kqlQuery, rangeQuery } from '@kbn/observability-plugin/server';
 import { keyBy } from 'lodash';
+import { ProcessorEvent } from '@kbn/observability-plugin/common';
 import { ApmServiceTransactionDocumentType } from '../../../../common/document_type';
-import {
-  SERVICE_NAME,
-  TRANSACTION_TYPE,
-} from '../../../../common/es_fields/apm';
 import { RollupInterval } from '../../../../common/rollup';
-import { isDefaultTransactionType } from '../../../../common/transaction_types';
-import { environmentQuery } from '../../../../common/utils/environment_query';
 import { getOffsetInMs } from '../../../../common/utils/get_offset_in_ms';
 import { calculateThroughputWithInterval } from '../../../lib/helpers/calculate_throughput';
 import { APMEventClient } from '../../../lib/helpers/create_es_client/create_apm_event_client';
 import { RandomSampler } from '../../../lib/helpers/get_random_sampler';
-import { getDurationFieldForTransactions } from '../../../lib/helpers/transactions';
-import {
-  calculateFailedTransactionRate,
-  getOutcomeAggregation,
-} from '../../../lib/helpers/transaction_error_rate';
+
 import { withApmSpan } from '../../../utils/with_apm_span';
 
-export async function getServiceTransactionDetailedStats({
-  serviceNames,
+export async function getServiceLogsDetailedStats({
+  services,
   environment,
   kuery,
   apmEventClient,
@@ -39,7 +30,10 @@ export async function getServiceTransactionDetailedStats({
   end,
   randomSampler,
 }: {
-  serviceNames: string[];
+  services: Array<{
+    serviceName: string;
+    isLogsOnly: boolean;
+  }>;
   environment: string;
   kuery: string;
   apmEventClient: APMEventClient;
@@ -57,27 +51,11 @@ export async function getServiceTransactionDetailedStats({
     offset,
   });
 
-  const outcomes = getOutcomeAggregation(documentType);
-
-  const metrics = {
-    avg_duration: {
-      avg: {
-        field: getDurationFieldForTransactions(documentType),
-      },
-    },
-    ...outcomes,
-  };
-
-  const response = await apmEventClient.search(
-    'get_service_transaction_detail_stats',
+  const response = await apmEventClient.searchLogs(
+    'get_service_logs_detail_stats',
     {
       apm: {
-        sources: [
-          {
-            documentType,
-            rollupInterval,
-          },
-        ],
+        events: [ProcessorEvent.metric],
       },
       body: {
         track_total_hits: false,
@@ -85,40 +63,48 @@ export async function getServiceTransactionDetailedStats({
         query: {
           bool: {
             filter: [
-              { terms: { [SERVICE_NAME]: serviceNames } },
+              {
+                terms: {
+                  derived_service_name: services.map(
+                    ({ serviceName }) => serviceName
+                  ),
+                },
+              },
               ...rangeQuery(startWithOffset, endWithOffset),
-              ...environmentQuery(environment),
               ...kqlQuery(kuery),
             ],
+          },
+        },
+        runtime_mappings: {
+          derived_service_name: {
+            type: 'keyword',
+            script: `if (doc.containsKey('service.name') && !doc['service.name'].empty) {
+              emit(doc['service.name'].value);
+            } else if (!doc['kubernetes.labels.app_kubernetes_io/name.keyword'].empty) {
+              emit(doc['kubernetes.labels.app_kubernetes_io/name.keyword'].value);
+            } else if (!doc['kubernetes.container.name.keyword'].empty) {
+              emit(doc['kubernetes.container.name.keyword'].value);
+            }`,
           },
         },
         aggs: {
           sample: {
             random_sampler: randomSampler,
             aggs: {
-              services: {
+              agg_services: {
                 terms: {
-                  field: SERVICE_NAME,
-                  size: serviceNames.length,
+                  field: 'derived_service_name',
+                  size: services.length,
                 },
                 aggs: {
-                  transactionType: {
-                    terms: {
-                      field: TRANSACTION_TYPE,
-                    },
-                    aggs: {
-                      ...metrics,
-                      timeseries: {
-                        date_histogram: {
-                          field: '@timestamp',
-                          fixed_interval: `${bucketSizeInSeconds}s`,
-                          min_doc_count: 0,
-                          extended_bounds: {
-                            min: startWithOffset,
-                            max: endWithOffset,
-                          },
-                        },
-                        aggs: metrics,
+                  timeseries: {
+                    date_histogram: {
+                      field: '@timestamp',
+                      fixed_interval: `${bucketSizeInSeconds}s`,
+                      min_doc_count: 0,
+                      extended_bounds: {
+                        min: startWithOffset,
+                        max: endWithOffset,
                       },
                     },
                   },
@@ -132,43 +118,24 @@ export async function getServiceTransactionDetailedStats({
   );
 
   return keyBy(
-    response.aggregations?.sample.services.buckets.map((bucket) => {
-      const topTransactionTypeBucket =
-        bucket.transactionType.buckets.find(({ key }) =>
-          isDefaultTransactionType(key as string)
-        ) ?? bucket.transactionType.buckets[0];
-
+    response.aggregations?.sample.agg_services.buckets.map((bucket) => {
       return {
         serviceName: bucket.key as string,
-        latency: topTransactionTypeBucket.timeseries.buckets.map(
-          (dateBucket) => ({
-            x: dateBucket.key + offsetInMs,
-            y: dateBucket.avg_duration.value,
-          })
-        ),
-        transactionErrorRate: topTransactionTypeBucket.timeseries.buckets.map(
-          (dateBucket) => ({
-            x: dateBucket.key + offsetInMs,
-            y: calculateFailedTransactionRate(dateBucket),
-          })
-        ),
-        throughput: topTransactionTypeBucket.timeseries.buckets.map(
-          (dateBucket) => ({
-            x: dateBucket.key + offsetInMs,
-            y: calculateThroughputWithInterval({
-              bucketSize: bucketSizeInSeconds,
-              value: dateBucket.doc_count,
-            }),
-          })
-        ),
+        logRate: bucket.timeseries.buckets.map((dateBucket) => ({
+          x: dateBucket.key + offsetInMs,
+          y: calculateThroughputWithInterval({
+            bucketSize: bucketSizeInSeconds,
+            value: dateBucket.doc_count,
+          }),
+        })),
       };
     }) ?? [],
     'serviceName'
   );
 }
 
-export async function getServiceDetailedStatsPeriods({
-  serviceNames,
+export async function getServiceDetailedStatsPeriodsForLogsServices({
+  services,
   environment,
   kuery,
   apmEventClient,
@@ -180,7 +147,10 @@ export async function getServiceDetailedStatsPeriods({
   end,
   randomSampler,
 }: {
-  serviceNames: string[];
+  services: Array<{
+    serviceName: string;
+    isLogsOnly: boolean;
+  }>;
   environment: string;
   kuery: string;
   apmEventClient: APMEventClient;
@@ -192,12 +162,12 @@ export async function getServiceDetailedStatsPeriods({
   end: number;
   randomSampler: RandomSampler;
 }) {
-  if (serviceNames.length === 0) {
+  if (services.length === 0) {
     return { currentPeriod: {}, previousPeriod: {} };
   }
   return withApmSpan('get_service_detailed_statistics', async () => {
     const commonProps = {
-      serviceNames,
+      services: services.filter((service) => service.isLogsOnly),
       environment,
       kuery,
       apmEventClient,
@@ -210,9 +180,9 @@ export async function getServiceDetailedStatsPeriods({
     };
 
     const [currentPeriod, previousPeriod] = await Promise.all([
-      getServiceTransactionDetailedStats(commonProps),
+      getServiceLogsDetailedStats(commonProps),
       offset
-        ? getServiceTransactionDetailedStats({
+        ? getServiceLogsDetailedStats({
             ...commonProps,
             offset,
           })

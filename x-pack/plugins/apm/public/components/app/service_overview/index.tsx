@@ -32,6 +32,7 @@ import { ServiceOverviewInstancesChartAndTable } from './service_overview_instan
 import { ServiceOverviewThroughputChart } from './service_overview_throughput_chart';
 import { TransactionsTable } from '../../shared/transactions_table';
 import { AggregatedTransactionsBadge } from '../../shared/aggregated_transactions_badge';
+import { LogsBasedOverview } from './logs_based_overview';
 import {
   isRumAgentName,
   isServerlessAgent,
@@ -44,8 +45,14 @@ export const chartHeight = 288;
 
 export function ServiceOverview() {
   const router = useApmRouter();
-  const { serviceName, fallbackToTransactions, agentName, serverlessType } =
-    useApmServiceContext();
+  const {
+    serviceName,
+    fallbackToTransactions,
+    agentName,
+    serverlessType,
+    isLogsOnly,
+    serviceNameField,
+  } = useApmServiceContext();
 
   const {
     query,
@@ -76,7 +83,9 @@ export function ServiceOverview() {
     ? 'column'
     : 'row';
 
-  return (
+  return isLogsOnly && serviceNameField ? (
+    <LogsBasedOverview serviceNameField={serviceNameField} />
+  ) : (
     <AnnotationsContextProvider
       serviceName={serviceName}
       environment={environment}

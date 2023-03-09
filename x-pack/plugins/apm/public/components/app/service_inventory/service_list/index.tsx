@@ -27,6 +27,7 @@ import {
   asMillisecondDuration,
   asPercent,
   asTransactionRate,
+  asLogsRate,
 } from '../../../../../common/utils/formatters';
 import { useApmParams } from '../../../../hooks/use_apm_params';
 import { useApmRouter } from '../../../../hooks/use_apm_router';
@@ -84,8 +85,8 @@ export function getServiceColumns({
             }),
             width: `${unit * 8}px`,
             sortable: true,
-            render: (_, { serviceName, alertsCount }) => {
-              if (!alertsCount) {
+            render: (_, { serviceName, alertsCount, isLogsOnly }) => {
+              if (!alertsCount || isLogsOnly) {
                 return null;
               }
 
@@ -124,7 +125,10 @@ export function getServiceColumns({
             }),
             width: `${unit * 6}px`,
             sortable: true,
-            render: (_, { healthStatus }) => {
+            render: (_, { healthStatus, isLogsOnly }) => {
+              if (isLogsOnly) {
+                return null;
+              }
               return (
                 <HealthBadge
                   healthStatus={healthStatus ?? ServiceHealthStatus.unknown}
@@ -140,9 +144,9 @@ export function getServiceColumns({
         defaultMessage: 'Name',
       }),
       sortable: true,
-      render: (_, { serviceName, agentName, transactionType }) => (
+      render: (_, { serviceName, agentName, transactionType, isLogsOnly }) => (
         <ServiceLink
-          agentName={agentName}
+          agentName={isLogsOnly ? 'logs-only' : agentName}
           query={{ ...query, transactionType }}
           serviceName={serviceName}
           serviceOverflowCount={serviceOverflowCount}
@@ -161,9 +165,12 @@ export function getServiceColumns({
             ),
             width: `${unit * 9}px`,
             sortable: true,
-            render: (_, { environments }) => (
-              <EnvironmentBadge environments={environments ?? []} />
-            ),
+            render: (_, { environments, isLogsOnly }) => {
+              if (isLogsOnly) {
+                return null;
+              }
+              return <EnvironmentBadge environments={environments ?? []} />;
+            },
           } as ITableColumn<ServiceListItem>,
         ]
       : []),
@@ -187,7 +194,10 @@ export function getServiceColumns({
       }),
       sortable: true,
       dataType: 'number',
-      render: (_, { serviceName, latency }) => {
+      render: (_, { serviceName, latency, isLogsOnly }) => {
+        if (isLogsOnly) {
+          return null;
+        }
         const { currentPeriodColor, previousPeriodColor } = getTimeSeriesColor(
           ChartType.LATENCY_AVG
         );
@@ -214,7 +224,10 @@ export function getServiceColumns({
       }),
       sortable: true,
       dataType: 'number',
-      render: (_, { serviceName, throughput }) => {
+      render: (_, { serviceName, throughput, isLogsOnly }) => {
+        if (isLogsOnly) {
+          return null;
+        }
         const { currentPeriodColor, previousPeriodColor } = getTimeSeriesColor(
           ChartType.THROUGHPUT
         );
@@ -242,7 +255,10 @@ export function getServiceColumns({
       }),
       sortable: true,
       dataType: 'number',
-      render: (_, { serviceName, transactionErrorRate }) => {
+      render: (_, { serviceName, transactionErrorRate, isLogsOnly }) => {
+        if (isLogsOnly) {
+          return null;
+        }
         const valueLabel = asPercent(transactionErrorRate, 1);
         const { currentPeriodColor, previousPeriodColor } = getTimeSeriesColor(
           ChartType.FAILED_TRANSACTION_RATE
@@ -259,6 +275,37 @@ export function getServiceColumns({
             hideSeries={!showWhenSmallOrGreaterThanLarge}
             color={currentPeriodColor}
             valueLabel={valueLabel}
+            comparisonSeriesColor={previousPeriodColor}
+          />
+        );
+      },
+      align: RIGHT_ALIGNMENT,
+    },
+    {
+      field: ServiceInventoryFieldName.LogRate,
+      name: i18n.translate('xpack.apm.servicesTable.logRateColumnLabel', {
+        defaultMessage: 'Log rate',
+      }),
+      sortable: true,
+      dataType: 'number',
+      render: (_, { serviceName, logRate, isLogsOnly }) => {
+        if (!isLogsOnly) {
+          return null;
+        }
+        const { currentPeriodColor, previousPeriodColor } = getTimeSeriesColor(
+          ChartType.THROUGHPUT
+        );
+
+        return (
+          <ListMetric
+            isLoading={comparisonDataLoading}
+            series={comparisonData?.currentPeriod[serviceName]?.logRate}
+            comparisonSeries={
+              comparisonData?.previousPeriod[serviceName]?.logRate
+            }
+            hideSeries={!showWhenSmallOrGreaterThanLarge}
+            color={currentPeriodColor}
+            valueLabel={asLogsRate(logRate)}
             comparisonSeriesColor={previousPeriodColor}
           />
         );

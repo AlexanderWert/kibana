@@ -197,6 +197,12 @@ Read more at https://github.com/elastic/kibana/blob/main/src/plugins/kibana_reac
     fetchEntries();
   }, [fetchEntries]);
 
+  useEffect(() => {
+    if (entries.length === 0) {
+      fetchEntries();
+    }
+  }, [fetchEntries, entries]);
+
   // Pagination handler
   const handlePagination = useCallback(
     ({ fromScroll, pagesBeforeStart, pagesAfterEnd }) => {

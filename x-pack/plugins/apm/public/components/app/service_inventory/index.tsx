@@ -182,9 +182,12 @@ function useServicesDetailedStatisticsFetcher({
               bucketSizeInSeconds: dataSourceOptions.bucketSizeInSeconds,
             },
             body: {
-              serviceNames: JSON.stringify(
+              services: JSON.stringify(
                 currentPageItems
-                  .map(({ serviceName }) => serviceName)
+                  .map(({ serviceName, serviceNameField, isLogsOnly }) => ({
+                    serviceName,
+                    isLogsOnly: isLogsOnly ?? false,
+                  }))
                   // Service name is sorted to guarantee the same order every time this API is called so the result can be cached.
                   .sort()
               ),
@@ -206,7 +209,6 @@ export function ServiceInventory() {
   const { mainStatisticsFetch } = useServicesMainStatisticsFetcher();
 
   const mainStatisticsItems = mainStatisticsFetch.data?.items ?? [];
-
   const displayHealthStatus = mainStatisticsItems.some(
     (item) => 'healthStatus' in item
   );

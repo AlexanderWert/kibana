@@ -21,7 +21,7 @@ import { useApmParams } from '../../../hooks/use_apm_params';
 import { useTimeRange } from '../../../hooks/use_time_range';
 
 export function ServiceLogs() {
-  const { serviceName } = useApmServiceContext();
+  const { serviceName, serviceNameField, isLogsOnly } = useApmServiceContext();
 
   const {
     query: { environment, kuery, rangeFrom, rangeTo },
@@ -51,7 +51,17 @@ export function ServiceLogs() {
     [environment, kuery, serviceName, start, end]
   );
 
-  return (
+  return isLogsOnly ? (
+    <LogStream
+      logView={{ type: 'log-view-reference', logViewId: 'default' }}
+      columns={[{ type: 'timestamp' }, { type: 'message' }]}
+      height={'60vh'}
+      startTimestamp={moment(start).valueOf()}
+      endTimestamp={moment(end).valueOf()}
+      query={`${serviceNameField}: "${serviceName}"`}
+      showFlyoutAction
+    />
+  ) : (
     <LogStream
       logView={{ type: 'log-view-reference', logViewId: 'default' }}
       columns={[{ type: 'timestamp' }, { type: 'message' }]}

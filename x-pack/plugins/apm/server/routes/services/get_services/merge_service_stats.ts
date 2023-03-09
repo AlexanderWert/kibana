@@ -10,11 +10,13 @@ import { joinByKey } from '../../../../common/utils/join_by_key';
 import { getServicesAlerts } from './get_service_alerts';
 import { getHealthStatuses } from './get_health_statuses';
 import { getServicesWithoutTransactions } from './get_services_without_transactions';
+import { getServicesFromLogs } from './get_services_from_logs';
 import { getServiceTransactionStats } from './get_service_transaction_stats';
 
 export function mergeServiceStats({
   serviceStats,
   servicesWithoutTransactions,
+  servicesFromLogs,
   healthStatuses,
   alertCounts,
 }: {
@@ -24,6 +26,7 @@ export function mergeServiceStats({
   servicesWithoutTransactions: Awaited<
     ReturnType<typeof getServicesWithoutTransactions>
   >['services'];
+  servicesFromLogs: Awaited<ReturnType<typeof getServicesFromLogs>>['services'];
   healthStatuses: Awaited<ReturnType<typeof getHealthStatuses>>;
   alertCounts: Awaited<ReturnType<typeof getServicesAlerts>>;
 }) {
@@ -33,9 +36,10 @@ export function mergeServiceStats({
     ({ serviceName }) => !foundServiceNames.includes(serviceName)
   );
 
-  const allServiceNames = foundServiceNames.concat(
-    servicesWithOnlyMetricDocuments.map(({ serviceName }) => serviceName)
-  );
+  const allServiceNames = foundServiceNames.concat([
+    ...servicesWithOnlyMetricDocuments.map(({ serviceName }) => serviceName),
+    ...servicesFromLogs.map(({ serviceName }) => serviceName),
+  ]);
 
   // make sure to exclude health statuses from services
   // that are not found in APM data
@@ -47,6 +51,7 @@ export function mergeServiceStats({
     asMutableArray([
       ...serviceStats,
       ...servicesWithoutTransactions,
+      ...servicesFromLogs,
       ...matchedHealthStatuses,
       ...alertCounts,
     ] as const),

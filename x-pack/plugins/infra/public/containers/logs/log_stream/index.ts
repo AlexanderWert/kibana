@@ -70,7 +70,6 @@ export function useLogStream({
   if (!isEqual(query, cachedQuery)) {
     setCachedQuery(query);
   }
-
   useEffect(() => {
     if (prevStartTimestamp && prevStartTimestamp > startTimestamp) {
       setState({ hasMoreBefore: true });

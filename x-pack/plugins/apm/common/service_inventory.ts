@@ -10,6 +10,7 @@ import { ServiceHealthStatus } from './service_health_status';
 
 export interface ServiceListItem {
   serviceName: string;
+  serviceNameField?: string;
   healthStatus?: ServiceHealthStatus;
   transactionType?: string;
   agentName?: AgentName;
@@ -19,14 +20,18 @@ export interface ServiceListItem {
   environments?: string[];
   alertsCount?: number;
   overflowCount?: number | null;
+  isLogsOnly?: boolean;
+  logRate?: number;
 }
 
 export enum ServiceInventoryFieldName {
   ServiceName = 'serviceName',
+  Data = 'data',
   HealthStatus = 'healthStatus',
   Environments = 'environments',
   TransactionType = 'transactionType',
   Throughput = 'throughput',
+  LogRate = 'logRate',
   Latency = 'latency',
   TransactionErrorRate = 'transactionErrorRate',
   AlertsCount = 'alertsCount',

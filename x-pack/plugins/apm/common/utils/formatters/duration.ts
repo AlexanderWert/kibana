@@ -180,6 +180,27 @@ export function asTransactionRate(value: Maybe<number>) {
   });
 }
 
+export function asLogsRate(value: Maybe<number>) {
+  if (!isFiniteNumber(value)) {
+    return NOT_AVAILABLE_LABEL;
+  }
+
+  let displayedValue: string;
+
+  if (value === 0) {
+    displayedValue = '0';
+  } else if (value <= 0.1) {
+    displayedValue = '< 0.1';
+  } else {
+    displayedValue = asDecimal(value);
+  }
+
+  return i18n.translate('xpack.apm.tlogsRateLabel', {
+    defaultMessage: `{displayedValue} lpm`,
+    values: { displayedValue },
+  });
+}
+
 export function asExactTransactionRate(value: number) {
   return i18n.translate('xpack.apm.exactTransactionRateLabel', {
     defaultMessage: `{value} tpm`,

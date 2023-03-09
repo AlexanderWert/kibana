@@ -15,6 +15,7 @@ import { MlClient } from '../../../lib/helpers/get_ml_client';
 import { RandomSampler } from '../../../lib/helpers/get_random_sampler';
 import { withApmSpan } from '../../../utils/with_apm_span';
 import { getHealthStatuses } from './get_health_statuses';
+import { getServicesFromLogs } from './get_services_from_logs';
 import { getServicesWithoutTransactions } from './get_services_without_transactions';
 import { getServicesAlerts } from './get_service_alerts';
 import { getServiceTransactionStats } from './get_service_transaction_stats';
@@ -65,6 +66,10 @@ export async function getServicesItems({
     const [
       { serviceStats, serviceOverflowCount },
       { services: servicesWithoutTransactions, maxServiceCountExceeded },
+      {
+        services: servicesFromLogs,
+        maxServiceCountExceeded: maxLogsServicesCountExceeded,
+      },
       healthStatuses,
       alertCounts,
     ] = await Promise.all([
@@ -73,6 +78,10 @@ export async function getServicesItems({
         apmEventClient,
       }),
       getServicesWithoutTransactions({
+        ...commonParams,
+        apmEventClient,
+      }),
+      getServicesFromLogs({
         ...commonParams,
         apmEventClient,
       }),
@@ -86,15 +95,25 @@ export async function getServicesItems({
       }),
     ]);
 
+    const logsOnlyServices = servicesFromLogs.filter(
+      (s) =>
+        !serviceStats.some((x) => x.serviceName === s.serviceName) &&
+        !servicesWithoutTransactions.some(
+          (x) => x.serviceName === s.serviceName
+        )
+    );
+
     return {
       items:
         mergeServiceStats({
           serviceStats,
           servicesWithoutTransactions,
+          servicesFromLogs: logsOnlyServices,
           healthStatuses,
           alertCounts,
         }) ?? [],
-      maxServiceCountExceeded,
+      maxServiceCountExceeded:
+        maxServiceCountExceeded || maxLogsServicesCountExceeded,
       serviceOverflowCount,
     };
   });

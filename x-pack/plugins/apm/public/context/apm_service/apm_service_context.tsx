@@ -10,7 +10,10 @@ import { useHistory } from 'react-router-dom';
 import { History } from 'history';
 import { getDefaultTransactionType } from '../../../common/transaction_types';
 import { useServiceTransactionTypesFetcher } from './use_service_transaction_types_fetcher';
-import { useServiceAgentFetcher } from './use_service_agent_fetcher';
+import {
+  useServiceAgentFetcher,
+  useServiceFieldNameFetcher,
+} from './use_service_agent_fetcher';
 import { useAnyOfApmParams } from '../../hooks/use_apm_params';
 import { useTimeRange } from '../../hooks/use_time_range';
 import { useFallbackToTransactionsFetcher } from '../../hooks/use_fallback_to_transactions_fetcher';
@@ -20,6 +23,8 @@ import { ServerlessType } from '../../../common/serverless';
 
 export interface APMServiceContextValue {
   serviceName: string;
+  serviceNameField?: string;
+  isLogsOnly?: boolean;
   agentName?: string;
   serverlessType?: ServerlessType;
   transactionType?: string;
@@ -65,6 +70,12 @@ export function ApmServiceContextProvider({
     end,
   });
 
+  const { serviceNameField } = useServiceFieldNameFetcher({
+    serviceName,
+    start,
+    end,
+  });
+
   const transactionTypes = useServiceTransactionTypesFetcher({
     serviceName,
     start,
@@ -86,6 +97,8 @@ export function ApmServiceContextProvider({
     <APMServiceContext.Provider
       value={{
         serviceName,
+        serviceNameField,
+        isLogsOnly: !!serviceNameField,
         agentName,
         serverlessType,
         transactionType: currentTransactionType,

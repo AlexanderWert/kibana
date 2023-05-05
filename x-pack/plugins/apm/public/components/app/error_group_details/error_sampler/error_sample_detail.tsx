@@ -42,6 +42,7 @@ import {
   logStacktraceTab,
 } from './error_tabs';
 import { ExceptionStacktrace } from './exception_stacktrace';
+import { PlaintextStacktrace } from './plaintext_stacktrace';
 import { useApmRouter } from '../../../../hooks/use_apm_router';
 import { useApmParams } from '../../../../hooks/use_apm_params';
 import { ERROR_GROUP_ID } from '../../../../../common/es_fields/apm';
@@ -360,14 +361,24 @@ function TabContent({
   const codeLanguage = error?.service.language?.name;
   const exceptions = error?.error.exception || [];
   const logStackframes = error?.error.log?.stacktrace;
-
+  const isPlaintextException =
+    !!error?.error.stack_trace &&
+    exceptions.length === 1 &&
+    !exceptions[0].stacktrace;
   switch (currentTab.key) {
     case logStacktraceTab.key:
       return (
         <Stacktrace stackframes={logStackframes} codeLanguage={codeLanguage} />
       );
     case exceptionStacktraceTab.key:
-      return (
+      return isPlaintextException ? (
+        <PlaintextStacktrace
+          message={exceptions[0].message}
+          type={exceptions[0].type}
+          stacktrace={error?.error.stack_trace}
+          codeLanguage={codeLanguage}
+        />
+      ) : (
         <ExceptionStacktrace
           codeLanguage={codeLanguage}
           exceptions={exceptions}

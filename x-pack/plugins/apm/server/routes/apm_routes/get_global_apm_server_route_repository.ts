@@ -43,6 +43,7 @@ import { suggestionsRouteRepository } from '../suggestions/route';
 import { timeRangeMetadataRoute } from '../time_range_metadata/route';
 import { traceRouteRepository } from '../traces/route';
 import { transactionRouteRepository } from '../transactions/route';
+import { dashboardsRouteRepository } from '../dashboards/route';
 
 function getTypedGlobalApmServerRouteRepository() {
   const repository = {
@@ -79,6 +80,7 @@ function getTypedGlobalApmServerRouteRepository() {
     ...labsRouteRepository,
     ...agentExplorerRouteRepository,
     ...mobileRouteRepository,
+    ...dashboardsRouteRepository,
   };
 
   return repository;

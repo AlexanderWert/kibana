@@ -21,6 +21,7 @@ import { DependenciesInventory } from '../../app/dependencies_inventory';
 import { DependencyOperationDetailView } from '../../app/dependency_operation_detail_view';
 import { useApmParams } from '../../../hooks/use_apm_params';
 import { TransactionTab } from '../../app/transaction_details/waterfall_with_summary/transaction_tabs';
+import { DependencyDetailDashboard } from '../../app/dependency_detail_dashboard';
 
 export const DependenciesInventoryTitle = i18n.translate(
   'xpack.apm.views.dependenciesInventory.title',
@@ -100,6 +101,9 @@ export const dependencies = {
       },
       '/dependencies/overview': {
         element: <DependencyDetailOverview />,
+      },
+      '/dependencies/dashboard': {
+        element: <DependencyDetailDashboard />,
       },
     },
   },

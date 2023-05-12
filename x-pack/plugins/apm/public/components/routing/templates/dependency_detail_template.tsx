@@ -80,6 +80,17 @@ export function DependencyDetailTemplate({ children }: Props) {
         path === '/dependencies/operation',
       append: <BetaBadge icon="beta" />,
     },
+    {
+      key: 'dashboard',
+      href: router.link('/dependencies/dashboard', {
+        query,
+      }),
+      label: i18n.translate('xpack.apm.DependencyDetailDashboard.title', {
+        defaultMessage: 'Dashboard',
+      }),
+      isSelected: path === '/dependencies/dashboard',
+      append: <BetaBadge icon="beta" />,
+    },
   ];
 
   return (

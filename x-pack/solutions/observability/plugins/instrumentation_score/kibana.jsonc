@@ -1,0 +1,21 @@
+{
+  "type": "plugin",
+  "id": "@kbn/instrumentation-score-plugin",
+  "owner": ["@elastic/ingest-team"],
+  "group": "observability",
+  "visibility": "private",
+  "description": "Checks quality of observability data and calculates quality metrics, such as the instrumentation score.",
+  "plugin": {
+    "id": "instrumentation_score",
+    "browser": false,
+    "server": true,
+    "configPath": ["xpack", "instrumentation_score"],
+    "requiredPlugins": [
+      "taskManager",
+      "apmSourcesAccess",
+      "apmDataAccess"
+    ],
+    "optionalPlugins": [],
+    "requiredBundles": ["observability"]
+  }
+}

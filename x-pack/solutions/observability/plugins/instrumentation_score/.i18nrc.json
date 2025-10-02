@@ -1,0 +1,7 @@
+{
+  "prefix": "instrumentationScore",
+  "paths": {
+    "instrumentationScore": "."
+  },
+  "translations": ["translations/ja-JP.json"]
+}

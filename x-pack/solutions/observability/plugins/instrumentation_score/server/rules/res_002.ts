@@ -25,10 +25,16 @@ export class Res002Rule extends InstScoreRule {
           c_host_names = COUNT_DISTINCT(resource.attributes.host.name, 100)
         BY ${this.SERVICE_NAME}, service.instance.id
       | STATS max_pods = MAX(c_pods),
-          max_hosts = MAX(c_host_names) BY ${this.SERVICE_NAME}
+          max_hosts = MAX(c_host_names),
+          ${this.REPR_COUNT} = COUNT(*) WHERE c_pods > 1 OR c_host_names > 1,
+          ${this.REPR_DENOMINATOR} = COUNT(*),
+          ${this.EXAMPLE_VALUE} = SAMPLE(service.instance.id, 1) WHERE c_pods > 1 OR c_host_names > 1
+            BY ${this.SERVICE_NAME}
       | EVAL ${this.PASSED} = max_pods <= 1 AND max_hosts <= 1
-      | KEEP ${this.SERVICE_NAME}, ${this.PASSED}`;
+      | KEEP ${this.PASSED}, ${this.SERVICE_NAME}, ${this.EXAMPLE_VALUE}, ${this.REPR_COUNT}, ${this.REPR_DENOMINATOR}`;
 
-  getExampleFieldName = () => undefined; // No example field
+  isExampleInEvaluationQuery = () => true;
+
+  getExampleFieldName = () => "service.instance.id";
 
 }

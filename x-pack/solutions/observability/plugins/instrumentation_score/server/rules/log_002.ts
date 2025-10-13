@@ -17,17 +17,17 @@ export class Log002Rule extends InstScoreRule {
     super(input, RULE_DEFINITION)
   }
 
-  getTargetSignalType = () => SignalType.LOGS;
-
   getEvaluationQuery = () => `FROM ${this.indices} METADATA _id
       | WHERE data_stream.type == "logs"
           AND @timestamp > NOW() - ${this.lookbackSeconds}s
-      | STATS 
-          logs_wo_severity = COUNT(*) WHERE severity_number == 0,
-          ${this.EXAMPLE_VALUE} = SAMPLE(_id, 1) WHERE severity_number == 0
-          BY ${this.SERVICE_NAME}
-      | EVAL ${this.PASSED} = logs_wo_severity == 0
-      | KEEP ${this.PASSED}, ${this.SERVICE_NAME}, ${this.EXAMPLE_VALUE}`;
+      | EVAL no_sev = severity_number IS NULL OR severity_number == 0
+      | STATS
+          ${this.EXAMPLE_VALUE} = SAMPLE(_id, 1) WHERE no_sev,
+          ${this.REPR_COUNT} = COUNT(*) WHERE no_sev,
+          ${this.REPR_DENOMINATOR} = COUNT(*)
+            BY ${this.SERVICE_NAME}
+      | EVAL ${this.PASSED} = ${this.REPR_COUNT} == 0
+      | KEEP ${this.PASSED}, ${this.SERVICE_NAME}, ${this.EXAMPLE_VALUE}, ${this.REPR_COUNT}, ${this.REPR_DENOMINATOR}`;
 
   isExampleInEvaluationQuery = () => true;
 

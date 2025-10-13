@@ -63,19 +63,22 @@ export class InstScoreCalculator {
 
     const rules_definitions_ops: BulkRequest['operations'] = [];
     rulesList.map(r => r.ruleDefinition).forEach(rDef => {
-      rules_definitions_ops.push({ index: { "_id": rDef.id } });
+      rules_definitions_ops.push({ update: { "_id": rDef.id } });
       rules_definitions_ops.push({
-        rule: {
-          id: rDef.id,
-          description: rDef.description,
-          impact_level: {
-            name: rDef.impactLevel.name,
-            weight: rDef.impactLevel.weight
-          },
-          rationale: rDef.rationale.replace(/\s*\r?\n\s*/g, ' '),
-          criteria: rDef.criteria,
-          target: rDef.target,
-        }
+        doc: {
+          rule: {
+            id: rDef.id,
+            description: rDef.description,
+            impact_level: {
+              name: rDef.impactLevel.name,
+              weight: rDef.impactLevel.weight
+            },
+            rationale: rDef.rationale.replace(/\s*\r?\n\s*/g, ' '),
+            criteria: rDef.criteria,
+            target: rDef.target,
+          }
+        },
+        doc_as_upsert: true
       });
     });
 
@@ -161,7 +164,8 @@ export class InstScoreCalculator {
         rule: rule_part,
         "service.name": service,
         result: evalResult.result,
-        example: evalResult.example
+        example: evalResult.example,
+        extent: evalResult.extent,
       }
     ]
   }
@@ -177,6 +181,7 @@ export class InstScoreCalculator {
 
       let overall_result = EvalResultValues.NOT_APPLICABLE;
       let overall_example: { field: string, value: string } | undefined = undefined;
+      let overall_extent: { count: number, total: number } | undefined = undefined;
 
       result.entries().forEach(([service, evalResult]) => {
         operations.push(...this.get_rule_results_es_operations(rule.ruleDefinition, evalResult, service));
@@ -187,12 +192,24 @@ export class InstScoreCalculator {
           if (!!evalResult.example && !overall_example) {
             overall_example = evalResult.example;
           }
+          if (!!evalResult.extent) {
+            if (overall_extent === undefined) {
+              overall_extent = {
+                count: evalResult.extent.count,
+                total: evalResult.extent.total
+              }
+            } else {
+              overall_extent.count += evalResult.extent.count;
+              overall_extent.total += evalResult.extent.total;
+            }
+          }
         }
       });
 
       operations.push(...this.get_rule_results_es_operations(rule.ruleDefinition, {
         result: overall_result,
-        example: overall_example
+        example: overall_example,
+        extent: overall_extent
       }));
     }
 
@@ -250,6 +267,7 @@ export class InstScoreCalculator {
         evalResultsPerRuleAndService.set(rule.ruleDefinition.id, result);
       } catch (e) {
         this.logger.error(`Error evaluating rule ${rule.ruleDefinition.id}: ${e}`);
+        this.logger.error(`ES|QL query: ${rule.getEvaluationQuery()}`);
       }
     }
 

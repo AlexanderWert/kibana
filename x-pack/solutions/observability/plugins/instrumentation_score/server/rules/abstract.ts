@@ -34,6 +34,8 @@ export abstract class InstScoreRule {
   SERVICE_NAME = 'resource.attributes.service.name';
   PASSED = 'passed';
   EXAMPLE_VALUE = "example_value";
+  REPR_COUNT = "repr_count";
+  REPR_DENOMINATOR = "repr_denominator";
 
   constructor(input: InstScoreRuleInput, ruleDef: InstScoreRuleDef) {
     this.ruleDefinition = ruleDef;
@@ -60,8 +62,11 @@ export abstract class InstScoreRule {
       include_ccs_metadata: true,
     });
 
-    const serviceNameColIdx = resp.columns.findIndex(col => col.name === this.SERVICE_NAME)
-    const passedColIdx = resp.columns.findIndex(col => col.name === this.PASSED)
+    const serviceNameColIdx = resp.columns.findIndex(col => col.name === this.SERVICE_NAME);
+    const passedColIdx = resp.columns.findIndex(col => col.name === this.PASSED);
+    const reprCountColIdx = resp.columns.findIndex(col => col.name === this.REPR_COUNT);
+    const reprDenominatorColIdx = reprCountColIdx ? resp.columns.findIndex(col => col.name === this.REPR_DENOMINATOR) : -1;
+
     let exampleColIdx = -1;
     if (this.isExampleInEvaluationQuery()) {
       exampleColIdx = resp.columns.findIndex(col => col.name === this.EXAMPLE_VALUE)
@@ -75,9 +80,17 @@ export abstract class InstScoreRule {
       const passed = row[passedColIdx] as boolean;
       const evalResult: InstScoreRuleEvaluationResult = {
         result: passed ? EvalResultValues.PASSED : EvalResultValues.FAILED,
-        example: undefined
+        example: undefined,
+        extent: undefined,
       };
       if (!passed) {
+        if (reprCountColIdx >= 0 && reprDenominatorColIdx >= 0) {
+          evalResult['extent'] = {
+            count: row[reprCountColIdx] as number,
+            total: row[reprDenominatorColIdx] as number
+          };
+        }
+
         if (this.isExampleInEvaluationQuery() && exampleColIdx >= 0) {
           evalResult['example'] = {
             field: this.getExampleFieldName() || "",
@@ -101,6 +114,15 @@ export abstract class InstScoreRule {
                 };
               }
             }
+
+            const extentCountColIdx = respExample.columns.findIndex(col => col.name === this.REPR_COUNT);
+            const extentDenominatorColIdx = extentCountColIdx ? respExample.columns.findIndex(col => col.name === this.REPR_DENOMINATOR) : -1;
+            if (respExample.values && respExample.values.length > 0 && extentCountColIdx >= 0 && extentDenominatorColIdx >= 0) {
+              evalResult['extent'] = {
+                count: respExample.values[0][extentCountColIdx] as number,
+                total: respExample.values[0][extentDenominatorColIdx] as number
+              };
+            }
           }
         }
       }
@@ -108,7 +130,7 @@ export abstract class InstScoreRule {
       result.set(serviceName, evalResult);
     }
 
-    allServices.filter(s => !checkedServices.includes(s)).forEach(s => result.set(s, { result: EvalResultValues.NOT_APPLICABLE, example: undefined }))
+    allServices.filter(s => !checkedServices.includes(s)).forEach(s => result.set(s, { result: EvalResultValues.NOT_APPLICABLE, example: undefined, extent: undefined }))
 
     return result;
   }

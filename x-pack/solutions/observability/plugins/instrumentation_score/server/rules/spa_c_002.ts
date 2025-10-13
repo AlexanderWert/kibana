@@ -28,10 +28,14 @@ export class SpaC002Rule extends InstScoreRule {
           AND @timestamp > NOW() - ${this.lookbackSeconds}s
       | STATS u_transactions = COUNT(transaction.id) BY trace.id, ${this.SERVICE_NAME}
       | STATS 
-          ${TRACE} = SAMPLE(trace.id, 1) WHERE u_transactions < 1, 
-          min_txn = MIN(u_transactions) 
+          ${TRACE} = SAMPLE(trace.id, 1) WHERE u_transactions == 0,
+          min_txn = MIN(u_transactions),
+          ${this.REPR_COUNT} = COUNT(*) WHERE u_transactions == 0,
+          ${this.REPR_DENOMINATOR} = COUNT(*)
         BY ${this.SERVICE_NAME}
-      | EVAL ${this.PASSED} = min_txn >= 1`;
+      | EVAL ${this.PASSED} = min_txn >= 1
+      | KEEP ${this.PASSED}, ${this.SERVICE_NAME}, ${TRACE}, ${this.REPR_COUNT}, ${this.REPR_DENOMINATOR}`;
+
 
   getExampleQuery = (serviceName: string,
     columns: EsqlEsqlColumnInfo[],

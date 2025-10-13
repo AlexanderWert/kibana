@@ -35,9 +35,13 @@ export class InstrumentationScorePlugin
           createTaskRunner: () => {
             return {
               run: async () => {
-                this.logger.debug('Running instrumentation score calculation task');
-                await calculator.init(core);
-                await calculator.execute();
+                try {
+                  this.logger.debug('Running instrumentation score calculation task');
+                  await calculator.init(core);
+                  await calculator.execute();
+                } catch (e) {
+                  this.logger.error(e)
+                }
               },
               cancel: async () => { },
             };

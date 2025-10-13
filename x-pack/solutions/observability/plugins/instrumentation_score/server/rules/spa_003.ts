@@ -25,14 +25,14 @@ export class Spa003Rule extends InstScoreRule {
 
   getEvaluationQuery = () => `FROM ${this.indices}
       | WHERE data_stream.type == "traces" AND @timestamp > NOW() - ${this.lookbackSeconds * NUM_LOOKBACK_WINDOWS}s
-      | STATS num_txs_1 = COUNT_DISTINCT(transaction.name) WHERE @timestamp > NOW() - ${this.lookbackSeconds}s,
-        num_span_names_1 = COUNT_DISTINCT(span.name) WHERE @timestamp > NOW() - ${this.lookbackSeconds}s AND (span.id != transaction.id OR transaction.id IS NULL),
-        num_txs_2 = COUNT_DISTINCT(transaction.name) WHERE @timestamp > NOW() - ${this.lookbackSeconds * NUM_LOOKBACK_WINDOWS}s,
-        num_span_names_2 = COUNT_DISTINCT(span.name) WHERE @timestamp > NOW() - ${this.lookbackSeconds * NUM_LOOKBACK_WINDOWS}s AND (span.id != transaction.id OR transaction.id IS NULL)
-        BY ${this.SERVICE_NAME}
+      | STATS num_txs_1 = COUNT_DISTINCT(transaction.name, 10000) WHERE @timestamp > NOW() - ${this.lookbackSeconds}s,
+        num_span_names_1 = COUNT_DISTINCT(span.name, 10000) WHERE @timestamp > NOW() - ${this.lookbackSeconds}s AND (span.id != transaction.id OR transaction.id IS NULL),
+        num_txs_2 = COUNT_DISTINCT(transaction.name, 10000) WHERE @timestamp > NOW() - ${this.lookbackSeconds * NUM_LOOKBACK_WINDOWS}s,
+        num_span_names_2 = COUNT_DISTINCT(span.name, 10000) WHERE @timestamp > NOW() - ${this.lookbackSeconds * NUM_LOOKBACK_WINDOWS}s AND (span.id != transaction.id OR transaction.id IS NULL)
+          BY ${this.SERVICE_NAME}
       | EVAL u_spans_per_txns_ratio_1 = TO_DOUBLE(num_span_names_1) / TO_DOUBLE(num_txs_1),
         u_spans_per_txns_ratio_2 = TO_DOUBLE(num_span_names_2) / TO_DOUBLE(num_txs_2)
-      | EVAL ${this.PASSED} = num_txs_2 < 50 OR (u_spans_per_txns_ratio_2 > 1.0 AND u_spans_per_txns_ratio_2 < 1.05 * u_spans_per_txns_ratio_1)
+      | EVAL ${this.PASSED} = u_spans_per_txns_ratio_2 <= 1.0 OR u_spans_per_txns_ratio_2 < 1.05 * u_spans_per_txns_ratio_1 OR num_span_names_2 < 100
       | KEEP ${this.SERVICE_NAME}, ${this.PASSED}`;
 
   getExampleQuery = (serviceName: string,
@@ -42,7 +42,10 @@ export class Spa003Rule extends InstScoreRule {
         AND ${this.SERVICE_NAME}=="${serviceName}" 
         AND @timestamp > NOW() - ${this.lookbackSeconds * NUM_LOOKBACK_WINDOWS}s
       | STATS calls_per_span_name = COUNT(span.id) BY span.name
-      | STATS ${this.EXAMPLE_VALUE} = SAMPLE(span.name, 1) WHERE calls_per_span_name == 1`;
+      | STATS ${this.EXAMPLE_VALUE} = SAMPLE(span.name, 1) WHERE calls_per_span_name == 1,
+          ${this.REPR_COUNT} = COUNT(*) WHERE calls_per_span_name == 1,
+          ${this.REPR_DENOMINATOR} = COUNT(*)
+      | KEEP ${this.EXAMPLE_VALUE}, ${this.REPR_COUNT}, ${this.REPR_DENOMINATOR}`;
 
   getExampleFieldName = () => "span.name";
 }

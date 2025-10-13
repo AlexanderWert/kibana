@@ -33,7 +33,9 @@ export class Spa002Rule extends InstScoreRule {
       | WHERE data_stream.type == "traces" 
         AND ${TRACE_ID} IS NOT NULL
         AND @timestamp > NOW() - ${(from_delta - buffer)}s AND @timestamp <= NOW() - ${buffer}s
-      | STATS trace_ids = SAMPLE(${TRACE_ID}, 1000)`
+      | STATS ids = SAMPLE(${TRACE_ID}, 1000) BY ${this.SERVICE_NAME}
+      | MV_EXPAND ids 
+      | STATS trace_ids = SAMPLE(ids, 1000)`
 
     const respTraces = await this.es.esql.query({
       query: tracesQuery,
@@ -63,6 +65,7 @@ export class Spa002Rule extends InstScoreRule {
 
     const passedPerService = new Map<string, boolean>();
     const samplePerService = new Map<string, string>();
+    const extentPerService = new Map<string, { count: number, total: number }>();
     const checkedServices: string[] = [];
     for (const row of resp.values || []) {
       const serviceName = row[serviceNameColIdx] as string;
@@ -79,6 +82,17 @@ export class Spa002Rule extends InstScoreRule {
         const orphan = parentIds.filter(p => !spanIds.includes(p));
         if (orphan && orphan.length > 0) {
           passedPerService.set(serviceName, false);
+
+          if (!extentPerService.get(serviceName)) {
+            extentPerService.set(serviceName, { count: 0, total: 0 });
+          }
+
+          const extent = extentPerService.get(serviceName);
+          if (!!extent) {
+            extent.total += spanIds.length;
+            extent.count += orphan.length;
+          }
+
           if (!samplePerService.get(serviceName)) {
             samplePerService.set(serviceName, orphan[0]);
           }
@@ -93,11 +107,12 @@ export class Spa002Rule extends InstScoreRule {
         example: !!samplePerService.get(service) ? {
           field: 'span.id',
           value: samplePerService.get(service) as string
-        } : undefined
+        } : undefined,
+        extent: extentPerService.get(service)
       });
     }
 
-    allServices.filter(s => !checkedServices.includes(s)).forEach(s => result.set(s, { result: EvalResultValues.NOT_APPLICABLE, example: undefined }))
+    allServices.filter(s => !checkedServices.includes(s)).forEach(s => result.set(s, { result: EvalResultValues.NOT_APPLICABLE, example: undefined, extent: undefined }))
 
     return result;
   }

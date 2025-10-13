@@ -27,6 +27,12 @@ const DEST_INDEX_RULES_RESULTS_MAPPINGS : MappingTypeMapping = {
         field: { type: 'keyword' },
         value: { type: 'keyword' }
       } 
+    },
+    extent: {
+      properties: {
+        count: { type: 'integer' },
+        total: { type: 'integer' }
+      } 
     }
   } 
 };

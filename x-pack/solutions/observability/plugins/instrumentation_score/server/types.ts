@@ -46,6 +46,10 @@ export interface InstScoreRuleEvaluationResult {
     field: string;
     value: string;
   } | undefined;
+  extent: {
+    count: number;
+    total: number;
+  } | undefined;
 }
 
 export interface InstScoreResult {

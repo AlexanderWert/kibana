@@ -37,7 +37,10 @@ export class SpaC001Rule extends InstScoreRule {
           AND ${this.SERVICE_NAME}=="${serviceName}" 
           AND @timestamp > NOW() - ${this.lookbackSeconds * NUM_LOOKBACK_WINDOWS}s
       | STATS calls_per_txn_name = COUNT(transaction.id) BY transaction.name
-      | STATS ${this.EXAMPLE_VALUE} = SAMPLE(transaction.name, 1) WHERE calls_per_txn_name == 1`;
+      | STATS ${this.EXAMPLE_VALUE} = SAMPLE(transaction.name, 1) WHERE calls_per_txn_name == 1,
+          ${this.REPR_COUNT} = COUNT(*) WHERE calls_per_txn_name == 1,
+          ${this.REPR_DENOMINATOR} = COUNT(*)
+      | KEEP ${this.EXAMPLE_VALUE}, ${this.REPR_COUNT}, ${this.REPR_DENOMINATOR}`;
 
   getExampleFieldName = () => "transaction.name";
 }

@@ -20,12 +20,15 @@ export class Res001Rule extends InstScoreRule {
       | WHERE ${this.SERVICE_NAME} IS NOT NULL
         AND resource.attributes.signaltometrics.service.name IS NULL
         AND @timestamp > NOW() - ${this.lookbackSeconds}s
-      | STATS c_id = COUNT(*),
-          c_instance_id = COUNT(*) WHERE service.instance.id IS NULL,
-          ${this.EXAMPLE_VALUE} = SAMPLE(_id, 1) WHERE service.instance.id IS NULL
-        BY ${this.SERVICE_NAME}
-      | EVAL ${this.PASSED} = c_id == c_instance_id
-      | KEEP ${this.SERVICE_NAME}, ${this.PASSED}, ${this.EXAMPLE_VALUE}`;
+      | FORK
+        (WHERE service.instance.id IS NULL)
+        (WHERE service.instance.id IS NOT NULL)
+      | STATS ${this.REPR_DENOMINATOR} = COUNT(*),
+          ${this.REPR_COUNT} = COUNT(*) WHERE _fork == "fork1",
+          ${this.EXAMPLE_VALUE} = SAMPLE(_id, 1) WHERE _fork == "fork1"
+            BY ${this.SERVICE_NAME}
+      | EVAL ${this.PASSED} = ${this.REPR_COUNT} == 0
+      | KEEP ${this.PASSED}, ${this.SERVICE_NAME}, ${this.EXAMPLE_VALUE}, ${this.REPR_COUNT}, ${this.REPR_DENOMINATOR}`;
 
   isExampleInEvaluationQuery = () => true;
 
